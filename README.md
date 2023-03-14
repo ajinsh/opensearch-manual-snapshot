@@ -1,4 +1,10 @@
-# Automating daily manual snapshots for Amazon OpenSearch Service as per custom retention period
+# Automating manual snapshots for Amazon OpenSearch Service as per custom retention period
+
+## Architecture Flow 
+
+![Opensearch Snapshot Flow](https://github.com/ajinsh/opensearch-manual-snapshot/blob/main/opensearch-manual-snapshot-flow.png)
+
+---
 
 This repo contains the source code for Sample Lambda Function to automate the manual snapshots in Amazon Opensearch Search using serverless technology 
 i.e. Amazon Lambda and Amazon EventBridge. Other solutions involve using the Index State Management Policy feature of including [snapshot](https://opendistro.github.io/for-elasticsearch-docs/docs/im/ism/policies/#snapshot) operation in the ISM Supported list of operations.
