@@ -36,7 +36,8 @@ Class `CustomSnapshot` __init__() has parameters:  `host`, `region`, `service`, 
     
 *  Modify the `CustomSnapshot.py` and set the correct retention for variable `RETENTION_PERIOD`. By default, the value for this is set to 30.
 This means at a given time there are only 30 snapshots in a given snapshot repository. Any snapshots older than 30 should not be present in the
-manual snapshot repository. 
+manual snapshot repository.  Also, create the snapshot IAM Role `TheSnapshotRole` as per instructions defined in pre-requisites for [Creating index snapshots in Amazon OpenSearch Service - Prerequisites](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/managedomains-snapshots.html#managedomains-snapshot-prerequisites). Replace the line `arn:aws:iam::XXXXXXXXXXXX:role/snapshot-role` accordingly with correct IAM role.
+
 
 * After modifying the above files, zip it along with dependencies as a fresh zip deployment as per instructions listed as [Deployment package with dependencies](https://docs.aws.amazon.com/lambda/latest/dg/python-package.html#python-package-create-package-with-dependency)
 or as per below 
