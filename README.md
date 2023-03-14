@@ -89,5 +89,4 @@ We can further improve this by automating the infrastructure using AWS CloudForm
 for `host`, `region`, `repo`, `snapshot_prefix` of Step 1.
 
 ####################################################################################################
-### P.S: Please fork this repository or make a pull request to give due credits for the work or for making additional improvements. Any code 
-plagiarism is strictly disdained.
+### P.S: Please fork this repository or make a pull request to give due credits for the work or for making additional improvements. Any code  plagiarism is strictly disdained.
