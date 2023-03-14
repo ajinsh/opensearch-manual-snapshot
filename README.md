@@ -53,7 +53,8 @@ Here the final deployment zip file is `Opensearch-Manual-Snapshot.zip`.
 
 
 * Create a Lambda Function using option  "Author from scratch". Enter function-name. Select Runtime > Python 3.x. Please note that the lambda function test 
-has been made using Python 3.9. Keep architecture "x86_64". Leave the advanced settings as default.  Finally, click on "Create Function".
+has been made using Python 3.9. Keep architecture "x86_64". Leave the advanced settings as default.  Finally, click on "Create Function". Ensure that the Lambda function IAM Role has permissions for `ES:HttpGet` and `ES:HttpPut`. If Amazon Opensearch Domain has fine-grained access control, map the the Lambda function IAM rol to `manage_snapshots` inbuilt role [Creating index snapshots in Amazon OpenSearch Service - Step 1: Map the snapshot role in OpenSearch Dashboards (if using fine-grained access control)](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/managedomains-snapshots.html#managedomains-snapshot-fgac)
+
 
 * Once the function has been created, click on "Upload from" > ".zip file" and upload the `Opensearch-Manual-Snapshot.zip`.
 
