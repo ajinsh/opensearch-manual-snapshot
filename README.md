@@ -67,7 +67,8 @@ has been made using Python 3.9. Keep architecture "x86_64". Leave the advanced s
 
 #### Step 3: Create Amazon EventBridge Schedule as pr the custom CRON requirement ##### 
 
-The cron schedule requirement is
+As per [Creating an Amazon EventBridge rule that runs on a schedule - Cron Expressions](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-rule-schedule.html#eb-cron-expressions), the cron schedule parameters are as below:
+
 
 | Field  | Values |  Wildcards | 
 | ------ | ------ | ------ |
