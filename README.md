@@ -32,7 +32,7 @@ Class `CustomSnapshot` __init__() has parameters:  `host`, `region`, `service`, 
   * `repo`    : Enter the name for your manual snapshot repository.
   * `snapshot_prefix` : Enter the name of the prefix for your snapshot name. The snapshot name has naming scheme as
     `snapshot_prefix + %Y-%d-%mt%H:%M:%S%z`. For instance, snapshot taken on `14th Feb 2023 01:45:27 UTC` will have name as
-    snapshot-2023-14-03t01:45:27+0000
+    snapshot-2023-14-03t01:45:27+0000 if `snapshot_prefix` is "snapshot-"
     
 *  Modify the `CustomSnapshot.py` and set the correct retention for variable `RETENTION_PERIOD`. By default, the value for this is set to 30.
 This means at a given time there are only 30 snapshots in a given snapshot repository. Any snapshots older than 30 should not be present in the
