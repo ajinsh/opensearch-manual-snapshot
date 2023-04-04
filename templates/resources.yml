@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Cloudformation stack for Opensearch
+Parameters:
+  OpensearchDomainName:
+    Description: The name for the Opensearch domain
+    Type: String  
+  OpensearchVPC:
+    Description: VPC for Opensearch with public and private subnets
+    Type: AWS::EC2::VPC::Id
+  OpensearchVPCSubnet:
+    Description: Select private subnets belonging to VPC for Opensearch
+    Type: List<AWS::EC2::Subnet::Id>
+  OpensearchVPCSG:
+    Description: Select security group to be applied Opensearch inside VPC for each Availability Zone
+    Type: AWS::EC2::SecurityGroup::Id
+  MasterInstanceType:
+    Description: The instance type for the Master Node
+    Type: String
+    Default: t3.medium.search
+    AllowedValues:
+      - t3.micro.search
+      - t3.medium.search
+  MasterInstanceCount:
+    Description: The instance count for the Master Node
+    Type: Number
+    MinValue: 3
+  AZCount:
+    Description: The Availability Zone for the Data Nodes
+    Type: Number
+    AllowedValues:
+      - 2
+      - 3
+    Default:  2
+  DataInstanceType:
+    Description: The instance type for the Data Node
+    Type: String
+    Default: t3.medium.search
+    AllowedValues:
+      - t3.micro.search
+      - t3.medium.search
+  DataInstanceCount:
+    Description: The instance count for the Data Node
+    Type: Number
+    MinValue: 2  
+  MasterUName:
+    Description: The user name for internal user database user
+    Type: String
+    Default: ''
+  MasterUPWD:
+    Description: The password for internal user database password
+    Type: String
+    NoEcho: true
+    Default: ''
+  AOSSVersion:
+    Description: The version for AWS Opensearch
+    Type: String
+    AllowedValues:
+      - OpenSearch_2.3
+      - OpenSearch_1.3   
+      - OpenSearch_1.2
+      - OpenSearch_1.1  
+      - OpenSearch_1.0
+      - Elasticsearch_7.10
+Conditions:
+  NoDedicatedMaster: !Equals [!Ref MasterInstanceCount, 0]
+  IsFGACEnabled:  !Not [!And [ !Equals [ !Ref MasterUName, ''], !Equals [ !Ref MasterUPWD, ''] ]]
+  IsDualAZ: !Equals [!Ref AZCount, 2]
+Resources:
+  OpensearchCluster:
+    Type: AWS::OpenSearchService::Domain
+    Properties:
+      AccessPolicies: 
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              AWS: '*'
+            Action: 'es:*'
+            Resource: !Join [ ':', [ !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/', !Ref OpensearchDomainName ] ]
+      AdvancedOptions:
+        rest.action.multi.allow_explicit_index: 'true'
+      ClusterConfig:
+        DedicatedMasterCount: !If [NoDedicatedMaster, !Ref AWS::NoValue, !Ref MasterInstanceCount]
+        DedicatedMasterEnabled: !If [NoDedicatedMaster, false, true]
+        DedicatedMasterType: !If [NoDedicatedMaster, !Ref AWS::NoValue, !Ref MasterInstanceType]
+        InstanceCount: !Ref DataInstanceCount
+        InstanceType: !Ref DataInstanceType
+        ZoneAwarenessEnabled: true
+        ZoneAwarenessConfig:
+          AvailabilityZoneCount: !Ref AZCount
+      DomainName: !Ref OpensearchDomainName
+      EBSOptions:
+        EBSEnabled: true
+        VolumeSize: 10
+        VolumeType: gp2
+      EncryptionAtRestOptions:
+        Enabled: true
+      EngineVersion: !Ref AOSSVersion
+      NodeToNodeEncryptionOptions:
+        Enabled: true
+      DomainEndpointOptions:
+        EnforceHTTPS: !If [IsFGACEnabled, 'true', 'false']
+      VPCOptions:
+        SecurityGroupIds:
+          - !Ref OpensearchVPCSG
+        SubnetIds:
+          - !Select [0, !Ref OpensearchVPCSubnet]
+          - !Select [1, !Ref OpensearchVPCSubnet]
+          - !If [IsDualAZ, !Ref AWS::NoValue, !Select [2, !Ref OpensearchVPCSubnet]]
+      AdvancedSecurityOptions:
+          Enabled: !If [IsFGACEnabled, 'true', 'false']
+          InternalUserDatabaseEnabled:  !If [IsFGACEnabled, 'true', 'false']
+          MasterUserOptions:
+            MasterUserName:  !If [IsFGACEnabled, !Ref MasterUName, !Ref AWS::NoValue]
+            MasterUserPassword: !If [IsFGACEnabled, !Ref MasterUPWD, !Ref AWS::NoValue]
+Outputs:
+  OpensearchEndpoint:
+    Description: AWS Opensearch Endpoint
+    Value: !GetAtt OpensearchCluster.DomainEndpoint
