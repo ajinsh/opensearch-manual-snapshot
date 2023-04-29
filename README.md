@@ -12,61 +12,70 @@ i.e. Amazon Lambda and Amazon EventBridge. Other solutions involve using the Ind
 > Use Case: Retain X number of snapshots in the manual snapshot repository and take manual snapshots as per cron schedule
 
 
-## File Structure
+## Folder Structure
 ```
-| Opensearch-Manual-Snapshot.zip
+| function (This folder contains the Lambda Function Code to perform the manual snapshot)
   |-lambda_function.py
   |-CustomSnapshot.py
+  
+  
+| templates (This folder contains the CloudFormation Template File)
+  |-resources.yml
+  
+
+| *.sh (Shell Scripts to perform the deployment)
 ```
 
 ## Getting Started
 The following steps outline how to implement the solution.
 
-#### Step 1: Pre-requisites ##### 
 
-* Create a brand new Amazon Opensearch Domain optionally with Fine-Grained Access Control Enabled. Else, use existing domain if you have.
+#### Step 1: Set total number of snapshots to retain and snapshot-suffix name ##### 
 
-#### Step 2: Modifying the Lambda Code ##### 
-
-* Extract the  `Opensearch-Manual-Snapshot.zip` file locally and unzip it.
-* Modify the `lambda_function.py` and pass the arguments to the instance of the class `CustomSnapshot` as per your requirement.
-Class `CustomSnapshot` __init__() has parameters:  `host`, `region`, `service`, `repo`, `snapshot_prefix` defined as below:
-
-  * `host`    : Amazon Opensearch Cluster Endpoint including https:// and trailing /
-  * `region`  : Region of Amazon Opensearch Cluster
-  * `service` : `es`
-  * `repo`    : Enter the name for your manual snapshot repository.
-  * `snapshot_prefix` : Enter the name of the prefix for your snapshot name. The snapshot name has naming scheme as
-    `snapshot_prefix + %Y-%d-%mt%H:%M:%S%z`. For instance, snapshot taken on `14th Feb 2023 01:45:27 UTC` will have name as
-    snapshot-2023-14-03t01:45:27+0000 if `snapshot_prefix` is "snapshot-"
+* Open the terminal or command prompt on your local machine. Navigate to the directory where you want to clone the repository.
+* Run the following command to clone the repository:
+```
+git clone https://github.com/ajinsh/opensearch-manual-snapshot.git
+```
+* Once the repository is cloned, you can navigate into the repository directory by running:
+```
+cd opensearch-manual-snapshot
+```
+* Go to `function/` folder 
+* Modify the `CustomSnapshot.py` to set the retention on the total number of snapshots. Class `CustomSnapshot` __init__() has RETENTION_PERIOD as the class variable which can be set to total number of snapshots to be retained. In the code, by default, the value for this is set to 30. This means at a given time there are only 30 snapshots in a given snapshot repository. Any snapshots older than 30 should not be present in the manual snapshot repository.
+ 
+The snapshots stored inside the manual snapshot repository have below naming scheme `snapshot_prefix` : Enter the name of the prefix for your snapshot name. The snapshot name has naming scheme as`snapshot_prefix + %Y-%d-%mt%H:%M:%S%z`. For instance, snapshot taken on `14th Feb 2023 01:45:27 UTC` will have name as snapshot-2023-14-03t01:45:27+0000  if `snapshot_prefix` is "snapshot-". You dont need to set `snapshot_prefix` in code but via CFN Stack Parameters later.
+ 
+You can modify the suffix part and set to custom datetimestring that you would like which equates to `"%Y-%m-%dt%H:%M:%S%z` for variable `snapshot_name`
     
-*  Modify the `CustomSnapshot.py` and set the correct retention for variable `RETENTION_PERIOD`. By default, the value for this is set to 30.
-This means at a given time there are only 30 snapshots in a given snapshot repository. Any snapshots older than 30 should not be present in the
-manual snapshot repository.  Also, create the snapshot IAM Role `TheSnapshotRole` as per instructions defined in pre-requisites for [Creating index snapshots in Amazon OpenSearch Service - Prerequisites](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/managedomains-snapshots.html#managedomains-snapshot-prerequisites). Replace the line `arn:aws:iam::XXXXXXXXXXXX:role/snapshot-role` accordingly with correct IAM role.
+#### Step 2. Install and configure AWS CLI in code environment ####  
+* Install  AWS CLI on command-prompt/shell using instructions [Getting started with the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html)
 
+* Configure AWS CLI with either an IAM User / IAM Role with access to  cloudformation:* and s3:* permissions. These permissions are required to create S3 buckets which holds the manual-snapshot(which is registered with OpenSearch) and the deployment package for lambda function. The Cloudformation permissions are required for creating CFN stack and deploy the whole pipeline.
 
-* After modifying the above files, zip it along with dependencies as a fresh zip deployment as per instructions listed as [Deployment package with dependencies](https://docs.aws.amazon.com/lambda/latest/dg/python-package.html#python-package-create-package-with-dependency)
-or as per below 
-```
-mkdir ../final-package
-pip install --target ../final-package requests
-pip install --target ../final-package requests_aws4auth
-mv CustomSnapshot.py lambda_function.py six.py ../final-package/
-cd ../final-package
-zip -r ./Opensearch-Manual-Snapshot.zip .
-```
-Here the final deployment zip file is `Opensearch-Manual-Snapshot.zip`.
+#### Step 3. Run the SH scripts in order ####  
 
+* Run `0.build.sh` to generate bucket-name.txt containing 2 lines
+  - `lambda-artifacts-<HEX-CODE>`
+  - `snapshot-bucket-<HEX-CODE>`
 
-* Create a Lambda Function using option  "Author from scratch". Enter function-name. Select Runtime > Python 3.x. Please note that the lambda function test 
-has been made using Python 3.9. Keep architecture "x86_64". Leave the advanced settings as default.  Finally, click on "Create Function". Ensure that the Lambda function IAM Role has permissions for `ES:HttpGet` and `ES:HttpPut`. If Amazon Opensearch Domain has fine-grained access control, map the the Lambda function IAM rol to `manage_snapshots` inbuilt role [Creating index snapshots in Amazon OpenSearch Service - Step 1: Map the snapshot role in OpenSearch Dashboards (if using fine-grained access control)](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/managedomains-snapshots.html#managedomains-snapshot-fgac)
+* Run `1.build.sh` to build the deployment package based on code stored in `function\` and upload it to `lambda-artifacts-<HEX-CODE>`
 
-
-* Once the function has been created, click on "Upload from" > ".zip file" and upload the `Opensearch-Manual-Snapshot.zip`.
-
-
-#### Step 3: Create Amazon EventBridge Schedule as pr the custom CRON requirement ##### 
-
+* Run `3.deploy.sh` to deploy the CFN Stack to the region(default region configured on your AWS CLI)
+  
+#### Step 4. Pass parameter to the CFN Stack ##### 
+ 
+Refer below to see how the parameters have been passed to the CFN Stack.
+  
+![CloudFormation Stack parameters](https://github.com/ajinsh/opensearch-manual-snapshot/blob/main/CloudFormation-Stack-Parameters.png)
+  
+***Note: Guidelines for CFN Parameters***
+> 
+> * You will have to pass the cron expression in double quotes for CFN Stack to run successfully. In my sample run, I passed parameter as "cron(59/59 16-18 * * ? *)"  which has double quotes.
+> * For subnets, pass comma seperated list of subnets for selecting multiple subnets in given VPC. 
+> * For parameter S3bucketName, set it to value `lambda-artifacts-<HEX-CODE>` from bucket-name.txt file generated (line 1 of file).
+> * For parameter SnapshotRepoName, set it to value `snapshot-bucket-<HEX-CODE>` from bucket-name.txt file generated (line 2 of file).
+  
 As per [Creating an Amazon EventBridge rule that runs on a schedule - Cron Expressions](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-rule-schedule.html#eb-cron-expressions), the cron schedule parameters are as below:
 
 
@@ -79,7 +88,7 @@ As per [Creating an Amazon EventBridge rule that runs on a schedule - Cron Expre
 | Day-of-week		| 1-7  or SUN-SAT		| , - * ? L # |
 | Year		| 1970-2199		| , - * / |
 
-For instance, inputting below cron schedule expression will invoke lambda function runs every 15 minutes every single day
+For instance, inputting cron schedule expression as "cron(0/15 8-18 * * ? *)" will invoke lambda function runs every 15 minutes every single day
 between 8 AM till 5 PM local time.
 
  | 0/15  | 8-17  |  * |  * |  ?  | * |
@@ -91,12 +100,8 @@ between 8 AM till 5 PM local time.
 Use the `GET _cat/snapshots/<repo>?v&s=end_epoch` to confirm that snapshots are taken every 15 minutes every single day
 between 8 AM till 5 PM local time or as per your custom cron schedule.
 
-
-####  Step 5: Upcoming /WIP ####  
-
-We can further improve this by automating the infrastructure using AWS CloudFormation and using parameterized templates to accept user inputs
-for `host`, `region`, `repo`, `snapshot_prefix` of Step 1.
-
+If this is first time, snapshot repository registration will happen and after which the first snapshot will be taken. Once the solution has been deployed, you can check the above APIs to confirm if the snapshot registration is happening successfully.
+  
 --- 
 
 # License
